@@ -16,7 +16,7 @@ struct Constants {
 }
 
 struct AppStrings {
-    static let appTitle = "Random Walk Generator"
+    static let appTitle = "Stride"
     static let generateWalk = "Generate Walk"
     static let waitingForLocation = "Waiting for location..."
     static let generatingRoute = "Generating route..."

@@ -2,24 +2,23 @@
 import PackageDescription
 
 let package = Package(
-    name: "RandomWalkApp",
+    name: "Stride",
     platforms: [
         .iOS(.v15)
     ],
     products: [
         .executable(
-            name: "RandomWalkApp",
-            targets: ["RandomWalkApp"]
+            name: "Stride",
+            targets: ["Stride"]
         )
     ],
     dependencies: [
         // Add any external dependencies here
         // For example, if you want to add networking or other utilities:
         // .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.6.0"),
-    ],
-    targets: [
+    ],    targets: [
         .executableTarget(
-            name: "RandomWalkApp",
+            name: "Stride",
             dependencies: [],
             path: ".",
             sources: [
@@ -29,11 +28,10 @@ let package = Package(
                 "Views",
                 "Services",
                 "Utils"
-            ]
-        ),
+            ]        ),
         .testTarget(
-            name: "RandomWalkAppTests",
-            dependencies: ["RandomWalkApp"],
+            name: "StrideTests",
+            dependencies: ["Stride"],
             path: "Tests"
         )
     ]

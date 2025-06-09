@@ -8,13 +8,12 @@ struct WalkSetupView: View {
       var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
+                // Header                VStack(spacing: 8) {
                     Image(systemName: "figure.walk.diamond")
                         .font(.system(size: 48))
                         .foregroundColor(.blue)
                     
-                    Text("Random Walk Generator")
+                    Text("Random Walk")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                         .multilineTextAlignment(.center)

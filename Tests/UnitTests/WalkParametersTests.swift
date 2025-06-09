@@ -1,6 +1,6 @@
 import XCTest
 import CoreLocation
-@testable import RandomWalkApp
+@testable import Stride
 
 class WalkParametersTests: XCTestCase {
     

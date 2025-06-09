@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-    <key>CFBundleName</key>
-    <string>Random Walk</string>
+<dict>    <key>CFBundleName</key>
+    <string>Stride</string>
     <key>CFBundleIdentifier</key>
-    <string>com.example.randomwalk</string>
+    <string>com.example.stride</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app needs location access to generate walking routes from your current location.</string>
+    <string>1.0</string>    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Stride needs location access to generate walking routes from your current location and help you discover nearby walks.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>This app needs location access to generate walking routes and track your progress during walks.</string>
+    <string>Stride needs location access to generate walking routes, track your progress during walks, and provide location-based walk recommendations.</string>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
         <string>location-services</string>
