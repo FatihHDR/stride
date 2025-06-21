@@ -3,9 +3,10 @@
 
 class StrideApp {
     constructor() {
-        this.currentView = 'random-walk';
-        this.map = null;
-        this.markers = [];
+        this.currentTab = 'walk';
+        this.userLocation = null;
+        this.isGettingLocation = false;
+        this.locationWatchId = null;
         this.currentRoute = null;
         this.publicWalks = this.generateMockPublicWalks();
         this.userLocations = [];
@@ -15,74 +16,58 @@ class StrideApp {
 
     init() {
         this.setupEventListeners();
-        this.showView('random-walk');
-        this.updateTabSelection();
-        this.initializeMap();
-    }
-
-    setupEventListeners() {
-        // Tab navigation
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const view = e.target.dataset.view;
-                this.showView(view);
-                this.updateTabSelection();
+        this.setupTabs();
+        this.requestLocation();
+    }    setupEventListeners() {
+        // Duration slider
+        const durationSlider = document.getElementById('durationSlider');
+        const durationDisplay = document.getElementById('durationDisplay');
+        
+        if (durationSlider && durationDisplay) {
+            durationSlider.addEventListener('input', (e) => {
+                durationDisplay.textContent = `${e.target.value} min`;
             });
-        });
+        }
 
-        // Generate Random Walk
-        document.getElementById('generate-random-btn').addEventListener('click', () => {
-            this.generateRandomWalk();
-        });
-
-        // Generate Multi-Location Walk
-        document.getElementById('generate-multi-btn').addEventListener('click', () => {
-            this.generateMultiLocationWalk();
-        });
-
-        // Add Location
-        document.getElementById('add-location-btn').addEventListener('click', () => {
-            this.addLocation();
-        });
-
-        // Clear Locations
-        document.getElementById('clear-locations-btn').addEventListener('click', () => {
-            this.clearLocations();
-        });
-
-        // Modal close buttons
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.closeModals();
-            });
-        });
-
-        // Share buttons
-        document.querySelectorAll('.share-btn').forEach(btn => {
+        // Duration suggestion buttons
+        document.querySelectorAll('.suggestion-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const walkId = e.target.closest('.walk-card').dataset.walkId;
-                this.shareWalk(walkId);
-            });
-        });
-
-        // Copy share code
-        document.getElementById('copy-share-code').addEventListener('click', () => {
-            this.copyShareCode();
-        });
-
-        // Current location button
-        document.getElementById('current-location-btn').addEventListener('click', () => {
-            this.getCurrentLocation();
-        });
-
-        // Modal overlay clicks
-        document.querySelectorAll('.modal-overlay').forEach(overlay => {
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    this.closeModals();
+                const duration = e.target.dataset.duration;
+                if (durationSlider && durationDisplay) {
+                    durationSlider.value = duration;
+                    durationDisplay.textContent = `${duration} min`;
                 }
             });
         });
+
+        // Generate walk button
+        const generateBtn = document.getElementById('generateWalkBtn');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', () => {
+                this.generateRandomWalk();
+            });
+        }        // Multi-location handlers
+        const addCurrentLocationBtn = document.getElementById('addCurrentLocation');
+        const locationSearch = document.getElementById('locationSearch');
+        const generateMultiBtn = document.getElementById('generateMultiBtn');
+        
+        if (addCurrentLocationBtn) {
+            addCurrentLocationBtn.addEventListener('click', () => {
+                this.addCurrentLocation();
+            });
+        }
+        
+        if (locationSearch) {
+            locationSearch.addEventListener('input', (e) => {
+                this.handleLocationSearch(e.target.value);
+            });
+        }
+        
+        if (generateMultiBtn) {
+            generateMultiBtn.addEventListener('click', () => {
+                this.generateMultiLocationWalk();
+            });
+        }
     }
 
     showView(viewName) {
@@ -109,43 +94,166 @@ class StrideApp {
                 button.classList.add('active');
             }
         });
-    }
-
-    generateRandomWalk() {
-        const duration = document.getElementById('duration-slider').value;
-        const difficulty = document.getElementById('difficulty-select').value;
-        const startLocation = document.getElementById('start-location').value;
-
-        if (!startLocation.trim()) {
-            this.showToast('Please enter a starting location', 'error');
-            return;
-        }
-
-        this.showLoader('Generating your perfect walking route...');
-
+    }    generateRandomWalk() {
+        const generateBtn = document.getElementById('generateWalkBtn');
+        const generateText = document.getElementById('generateText');
+        const generateIcon = document.getElementById('generateIcon');
+        const generateSpinner = document.getElementById('generateSpinner');
+        const walkResult = document.getElementById('walkResult');
+        
+        // Get duration
+        const durationSlider = document.getElementById('durationSlider');
+        const duration = durationSlider ? parseInt(durationSlider.value) : 30;
+        
+        // Show loading state
+        if (generateBtn) generateBtn.disabled = true;
+        if (generateText) generateText.textContent = 'Generating...';
+        if (generateIcon) generateIcon.style.display = 'none';
+        if (generateSpinner) generateSpinner.style.display = 'inline-block';
+        
         // Simulate API call
         setTimeout(() => {
-            const route = this.generateMockRoute(startLocation, duration, difficulty);
-            this.displayRoute(route);
-            this.hideLoader();
-            this.showToast('Route generated successfully!', 'success');
+            // Generate mock route
+            const route = this.generateMockRoute(duration);
+            this.currentRoute = route;
+            
+            // Update UI with results
+            this.displayWalkResult(route);
+            
+            // Reset button state
+            if (generateBtn) generateBtn.disabled = false;
+            if (generateText) generateText.textContent = 'Generate New Route';
+            if (generateIcon) generateIcon.style.display = 'inline-block';
+            if (generateSpinner) generateSpinner.style.display = 'none';
+            
         }, 2000);
-    }
-
-    generateMultiLocationWalk() {
+    }    generateMultiLocationWalk() {
         if (this.userLocations.length < 2) {
             this.showToast('Please add at least 2 locations', 'error');
             return;
         }
 
-        this.showLoader('Creating multi-location route...');
+        const generateBtn = document.getElementById('generateMultiBtn');
+        const generateIcon = document.getElementById('generateMultiIcon');
+        const generateSpinner = document.getElementById('generateMultiSpinner');
+        
+        // Show loading state
+        if (generateBtn) generateBtn.disabled = true;
+        if (generateIcon) generateIcon.style.display = 'none';
+        if (generateSpinner) generateSpinner.style.display = 'inline-block';
 
         setTimeout(() => {
             const route = this.generateMultiMockRoute(this.userLocations);
-            this.displayRoute(route);
-            this.hideLoader();
+            this.currentRoute = route;
             this.showToast('Multi-location route created!', 'success');
+            
+            // Reset button state
+            if (generateBtn) generateBtn.disabled = false;
+            if (generateIcon) generateIcon.style.display = 'inline-block';
+            if (generateSpinner) generateSpinner.style.display = 'none';
         }, 2500);
+    }
+
+    addCurrentLocation() {
+        if (!this.userLocation) {
+            this.showToast('Location not available', 'error');
+            return;
+        }
+        
+        // Mock adding current location
+        const location = {
+            id: Date.now(),
+            name: 'Current Location',
+            address: 'Your current position',
+            lat: this.userLocation.lat,
+            lng: this.userLocation.lng
+        };
+        
+        this.userLocations.push(location);
+        this.updateLocationsList();
+        this.showToast('Current location added', 'success');
+    }
+
+    handleLocationSearch(query) {
+        if (query.length < 3) {
+            document.getElementById('searchResults').innerHTML = '';
+            return;
+        }
+        
+        // Mock search results
+        const mockResults = [
+            'Central Park', 'Times Square', 'Brooklyn Bridge', 
+            'Museum of Modern Art', 'High Line Park', 'Wall Street'
+        ].filter(place => place.toLowerCase().includes(query.toLowerCase()));
+        
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = mockResults.map(place => 
+            `<div class="search-result" onclick="window.strideApp.addLocationFromSearch('${place}')">${place}</div>`
+        ).join('');
+    }
+
+    addLocationFromSearch(placeName) {
+        const location = {
+            id: Date.now(),
+            name: placeName,
+            address: `${placeName}, New York, NY`,
+            lat: 40.7128 + (Math.random() - 0.5) * 0.1,
+            lng: -74.0060 + (Math.random() - 0.5) * 0.1
+        };
+        
+        this.userLocations.push(location);
+        this.updateLocationsList();
+        this.showToast(`${placeName} added to route`, 'success');
+        
+        // Clear search
+        document.getElementById('locationSearch').value = '';
+        document.getElementById('searchResults').innerHTML = '';
+    }
+
+    updateLocationsList() {
+        const locationsCard = document.getElementById('locationsCard');
+        const locationsList = document.getElementById('locationsList');
+        const locationCount = document.getElementById('locationCount');
+        const totalDistance = document.getElementById('totalDistance');
+        const generateBtn = document.getElementById('generateMultiBtn');
+        
+        if (this.userLocations.length === 0) {
+            locationsCard.style.display = 'none';
+            if (generateBtn) generateBtn.disabled = true;
+            return;
+        }
+        
+        locationsCard.style.display = 'block';
+        locationCount.textContent = this.userLocations.length;
+        
+        // Calculate approximate total distance
+        const distance = this.userLocations.length * 0.8 + Math.random() * 0.5;
+        totalDistance.textContent = `≈ ${distance.toFixed(1)} km`;
+        
+        // Create location list HTML
+        locationsList.innerHTML = this.userLocations.map((location, index) => `
+            <div class="location-item">
+                <div class="location-number">${index + 1}</div>
+                <div class="location-info">
+                    <div class="location-name">${location.name}</div>
+                    <div class="location-address">${location.address}</div>
+                </div>
+                <button class="remove-location" onclick="window.strideApp.removeLocation(${location.id})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `).join('');
+        
+        // Enable generate button if we have at least 2 locations
+        if (generateBtn) {
+            generateBtn.disabled = this.userLocations.length < 2;
+        }
+    }
+
+    removeLocation(locationId) {
+        this.userLocations = this.userLocations.filter(loc => loc.id !== locationId);
+        this.updateLocationsList();
+        this.showToast('Location removed', 'info');
     }
 
     addLocation() {
@@ -250,29 +358,17 @@ class StrideApp {
             `;
             container.appendChild(walkCard);
         });
-    }
-
-    generateMockRoute(startLocation, duration, difficulty) {
-        const distances = {
-            'easy': { min: 1.5, max: 3.0 },
-            'moderate': { min: 2.5, max: 5.0 },
-            'challenging': { min: 4.0, max: 8.0 }
-        };
-
-        const difficultyData = distances[difficulty];
-        const distance = (difficultyData.min + (difficultyData.max - difficultyData.min) * Math.random()).toFixed(1);
-        const steps = Math.round(distance * 1200);
-
+    }    generateMockRoute(duration) {
+        const distance = (duration * 0.08 + Math.random() * 0.5).toFixed(1); // Roughly 5km/h walking pace
+        const waypoints = Math.floor(duration / 10) + Math.floor(Math.random() * 3) + 2; // More waypoints for longer walks
+        
         return {
             id: Date.now().toString(),
-            title: `${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Walk from ${startLocation}`,
-            startLocation,
             distance: `${distance} km`,
             duration: `${duration} min`,
-            difficulty: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
-            steps: steps.toLocaleString(),
-            calories: Math.round(steps * 0.04),
-            elevation: Math.round(Math.random() * 100 + 20),
+            waypoints: waypoints,
+            steps: Math.round(distance * 1300).toLocaleString(), // ~1300 steps per km
+            calories: Math.round(duration * 4), // ~4 calories per minute walking
             highlights: this.generateRouteHighlights()
         };
     }
@@ -505,15 +601,24 @@ class StrideApp {
     }
 
     showToast(message, type = 'info') {
-        const toast = document.getElementById('toast');
-        const toastMessage = document.getElementById('toast-message');
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}-circle"></i>
+            <span>${message}</span>
+        `;
         
-        toastMessage.textContent = message;
-        toast.className = `toast ${type}`;
-        toast.classList.add('show');
-
+        // Add to document
+        document.body.appendChild(toast);
+        
+        // Show toast
+        setTimeout(() => toast.classList.add('show'), 100);
+        
+        // Remove toast after 3 seconds
         setTimeout(() => {
             toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
         }, 3000);
     }
 
@@ -521,6 +626,153 @@ class StrideApp {
         document.querySelectorAll('.modal-overlay').forEach(modal => {
             modal.classList.remove('active');
         });
+    }
+
+    setupTabs() {
+        // Tab navigation
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const tabName = e.currentTarget.dataset.tab;
+                this.switchTab(tabName);
+            });
+        });
+    }
+
+    switchTab(tabName) {
+        // Remove active class from all tabs and content
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+
+        // Add active class to selected tab and content
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+        
+        this.currentTab = tabName;
+    }
+
+    requestLocation() {
+        if (this.isGettingLocation) return;
+        
+        this.isGettingLocation = true;
+        this.updateLocationStatus('Getting Location...', 'orange', true);
+        
+        if (!navigator.geolocation) {
+            this.updateLocationStatus('Location not supported', 'red', false);
+            this.isGettingLocation = false;
+            return;
+        }
+
+        // Options for geolocation
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                this.handleLocationSuccess(position);
+            },
+            (error) => {
+                this.handleLocationError(error);
+            },
+            options
+        );
+    }
+
+    handleLocationSuccess(position) {
+        this.userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+        };
+        
+        this.isGettingLocation = false;
+        
+        // Update UI
+        this.updateLocationStatus('Location found', 'green', false);
+        this.enableGenerateButton();
+        
+        // Update accuracy display
+        const accuracyElement = document.getElementById('locationAccuracy');
+        if (accuracyElement) {
+            accuracyElement.textContent = `Accuracy: ±${Math.round(position.coords.accuracy)}m`;
+        }
+    }
+
+    handleLocationError(error) {
+        this.isGettingLocation = false;
+        let errorMessage = 'Location unavailable';
+        
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = 'Location access denied';
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = 'Location unavailable';
+                break;
+            case error.TIMEOUT:
+                errorMessage = 'Location request timeout';
+                break;
+        }
+        
+        this.updateLocationStatus(errorMessage, 'red', false);
+        
+        // Still enable the button to allow manual location entry or demo mode
+        this.enableGenerateButton();
+    }
+
+    updateLocationStatus(message, color, showSpinner) {
+        const statusCard = document.getElementById('locationStatus');
+        const statusTitle = statusCard?.querySelector('.status-title');
+        const statusDot = statusCard?.querySelector('.status-dot');
+        const spinner = document.getElementById('locationSpinner');
+        
+        if (statusTitle) statusTitle.textContent = message;
+        if (statusDot) {
+            statusDot.className = `status-dot ${color}`;
+        }
+        if (spinner) {
+            spinner.style.display = showSpinner ? 'block' : 'none';
+        }
+    }
+
+    enableGenerateButton() {
+        const generateBtn = document.getElementById('generateWalkBtn');
+        if (generateBtn) {
+            generateBtn.disabled = false;
+        }
+    }
+
+    displayWalkResult(route) {
+        const walkResult = document.getElementById('walkResult');
+        const walkDistance = document.getElementById('walkDistance');
+        const walkDuration = document.getElementById('walkDuration');
+        const walkWaypoints = document.getElementById('walkWaypoints');
+        
+        if (walkDistance) walkDistance.textContent = route.distance;
+        if (walkDuration) walkDuration.textContent = route.duration;
+        if (walkWaypoints) walkWaypoints.textContent = route.waypoints;
+        
+        if (walkResult) {
+            walkResult.style.display = 'block';
+            walkResult.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    // Global function to show map (called from HTML)
+    showMap(type) {
+        this.showMapModal(type);
+    }
+
+    // Add the showMapModal method to the StrideApp class
+    showMapModal(type) {
+        // Simple implementation - could be enhanced with actual map
+        alert(`Showing ${type} route on map!\n\nRoute Details:\n${JSON.stringify(this.currentRoute, null, 2)}`);
     }
 }
 
