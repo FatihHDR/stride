@@ -295,40 +295,54 @@
             </div>
         </div>
 
-        <!-- Map Modal -->
-        <div class="modal" id="mapModal">
-            <div class="modal-content">
+        <!-- Route Map Modal -->
+        <div class="modal-overlay" id="mapModal" style="display: none;">
+            <div class="modal-content map-modal">
                 <div class="modal-header">
-                    <h3>Your Route</h3>
-                    <button class="close-btn" onclick="closeMap()">
+                    <h3 id="mapTitle">Walking Route</h3>
+                    <button class="close-btn" onclick="closeMapModal()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div class="map-container">
-                    <div id="map" class="map"></div>
-                    <div class="map-controls">
-                        <button class="map-control-btn" onclick="recenterMap()">
-                            <i class="fas fa-location-arrow"></i>
-                        </button>
-                        <button class="map-control-btn" onclick="toggleMapInfo()">
-                            <i class="fas fa-info-circle"></i>
-                        </button>
+                <div class="modal-body">
+                    <div class="route-info">
+                        <div class="route-stats">
+                            <div class="route-stat">
+                                <i class="fas fa-ruler"></i>
+                                <span id="modalDistance">0 km</span>
+                            </div>
+                            <div class="route-stat">
+                                <i class="fas fa-clock"></i>
+                                <span id="modalDuration">0 min</span>
+                            </div>
+                            <div class="route-stat">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span id="modalWaypoints">0 stops</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="map-info" id="mapInfo">
-                    <div class="info-stats">
-                        <div class="info-stat">
-                            <i class="fas fa-clock"></i>
-                            <span id="mapDuration">0 min</span>
+                    <div class="map-container">
+                        <div id="routeMap" class="route-map"></div>
+                        <div class="map-placeholder" id="mapPlaceholder">
+                            <i class="fas fa-map"></i>
+                            <h4>Interactive Route Map</h4>
+                            <p>Your walking route will be displayed here</p>
+                            <div class="route-highlights" id="routeHighlights"></div>
                         </div>
-                        <div class="info-stat">
-                            <i class="fas fa-ruler"></i>
-                            <span id="mapDistance">0 km</span>
-                        </div>
-                        <div class="info-stat">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span id="mapWaypoints">0 points</span>
-                        </div>
+                    </div>
+                    <div class="route-actions">
+                        <button class="action-btn primary" onclick="startNavigation()">
+                            <i class="fas fa-directions"></i>
+                            Start Navigation
+                        </button>
+                        <button class="action-btn secondary" onclick="shareRoute()">
+                            <i class="fas fa-share"></i>
+                            Share Route
+                        </button>
+                        <button class="action-btn secondary" onclick="downloadRoute()">
+                            <i class="fas fa-download"></i>
+                            Export GPX
+                        </button>
                     </div>
                 </div>
             </div>

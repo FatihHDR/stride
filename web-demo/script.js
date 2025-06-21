@@ -62,12 +62,25 @@ class StrideApp {
                 this.handleLocationSearch(e.target.value);
             });
         }
-        
-        if (generateMultiBtn) {
+          if (generateMultiBtn) {
             generateMultiBtn.addEventListener('click', () => {
                 this.generateMultiLocationWalk();
             });
         }
+
+        // Modal overlay click handler
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                this.closeMapModal();
+            }
+        });
+
+        // Escape key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closeMapModal();
+            }
+        });
     }
 
     showView(viewName) {
@@ -136,22 +149,48 @@ class StrideApp {
         const generateBtn = document.getElementById('generateMultiBtn');
         const generateIcon = document.getElementById('generateMultiIcon');
         const generateSpinner = document.getElementById('generateMultiSpinner');
+        const generateText = document.getElementById('generateMultiText');
+        const multiResult = document.getElementById('multiResult');
         
         // Show loading state
         if (generateBtn) generateBtn.disabled = true;
+        if (generateText) generateText.textContent = 'Generating...';
         if (generateIcon) generateIcon.style.display = 'none';
         if (generateSpinner) generateSpinner.style.display = 'inline-block';
 
         setTimeout(() => {
             const route = this.generateMultiMockRoute(this.userLocations);
             this.currentRoute = route;
+            
+            // Update multi-location result display
+            this.displayMultiLocationResult(route);
+            
             this.showToast('Multi-location route created!', 'success');
             
             // Reset button state
             if (generateBtn) generateBtn.disabled = false;
+            if (generateText) generateText.textContent = 'Generate New Route';
             if (generateIcon) generateIcon.style.display = 'inline-block';
             if (generateSpinner) generateSpinner.style.display = 'none';
         }, 2500);
+    }
+
+    displayMultiLocationResult(route) {
+        const multiResult = document.getElementById('multiResult');
+        const multiLocationCount = document.getElementById('multiLocationCount');
+        const multiDistance = document.getElementById('multiDistance');
+        const multiDuration = document.getElementById('multiDuration');
+        const multiRoutes = document.getElementById('multiRoutes');
+        
+        if (multiLocationCount) multiLocationCount.textContent = `${this.userLocations.length} locations connected`;
+        if (multiDistance) multiDistance.textContent = route.distance;
+        if (multiDuration) multiDuration.textContent = route.duration;
+        if (multiRoutes) multiRoutes.textContent = `${this.userLocations.length - 1}`;
+        
+        if (multiResult) {
+            multiResult.style.display = 'block';
+            multiResult.scrollIntoView({ behavior: 'smooth' });
+        }
     }
 
     addCurrentLocation() {
@@ -724,9 +763,7 @@ class StrideApp {
         
         // Still enable the button to allow manual location entry or demo mode
         this.enableGenerateButton();
-    }
-
-    updateLocationStatus(message, color, showSpinner) {
+    }    updateLocationStatus(message, color, showSpinner) {
         const statusCard = document.getElementById('locationStatus');
         const statusTitle = statusCard?.querySelector('.status-title');
         const statusDot = statusCard?.querySelector('.status-dot');
@@ -774,6 +811,149 @@ class StrideApp {
         // Simple implementation - could be enhanced with actual map
         alert(`Showing ${type} route on map!\n\nRoute Details:\n${JSON.stringify(this.currentRoute, null, 2)}`);
     }
+
+    showRouteModal(routeType) {
+        if (!this.currentRoute) {
+            this.showToast('No route available to display', 'error');
+            return;
+        }
+
+        const modal = document.getElementById('mapModal');
+        const mapTitle = document.getElementById('mapTitle');
+        const modalDistance = document.getElementById('modalDistance');
+        const modalDuration = document.getElementById('modalDuration');
+        const modalWaypoints = document.getElementById('modalWaypoints');
+        const routeHighlights = document.getElementById('routeHighlights');
+        
+        // Update modal content
+        if (mapTitle) {
+            mapTitle.textContent = routeType === 'random' ? 'Random Walk Route' : 'Multi-Location Route';
+        }
+        
+        if (modalDistance) modalDistance.textContent = this.currentRoute.distance;
+        if (modalDuration) modalDuration.textContent = this.currentRoute.duration;
+        if (modalWaypoints) {
+            modalWaypoints.textContent = this.currentRoute.waypoints ? 
+                `${this.currentRoute.waypoints} stops` : 'Multiple stops';
+        }
+        
+        // Add route highlights
+        if (routeHighlights && this.currentRoute.highlights) {
+            routeHighlights.innerHTML = `
+                <h5>Route Highlights</h5>
+                <div class="highlights-list">
+                    ${this.currentRoute.highlights.map(highlight => 
+                        `<span class="highlight-tag">${highlight}</span>`
+                    ).join('')}
+                </div>
+            `;
+        }
+        
+        // Show modal
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    closeMapModal() {
+        const modal = document.getElementById('mapModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    startNavigation() {
+        this.showToast('Navigation started! 🧭', 'success');
+        this.closeMapModal();
+        // Here you could integrate with actual navigation apps
+        // window.open(`https://maps.google.com/maps?daddr=${destination}`);
+    }
+
+    shareRoute() {
+        if (!this.currentRoute) {
+            this.showToast('No route to share', 'error');
+            return;
+        }
+        
+        const shareData = {
+            title: 'Check out my walking route!',
+            text: `I generated a ${this.currentRoute.duration} walking route (${this.currentRoute.distance}) using Stride app!`,
+            url: window.location.href
+        };
+        
+        if (navigator.share) {
+            navigator.share(shareData).then(() => {
+                this.showToast('Route shared!', 'success');
+            }).catch(() => {
+                this.fallbackShare(shareData);
+            });
+        } else {
+            this.fallbackShare(shareData);
+        }
+    }
+
+    fallbackShare(shareData) {
+        // Copy to clipboard as fallback
+        const text = `${shareData.text}\n${shareData.url}`;
+        navigator.clipboard.writeText(text).then(() => {
+            this.showToast('Route copied to clipboard!', 'success');
+        }).catch(() => {
+            this.showToast('Unable to share route', 'error');
+        });
+    }
+
+    downloadRoute() {
+        if (!this.currentRoute) {
+            this.showToast('No route to download', 'error');
+            return;
+        }
+        
+        // Generate mock GPX data
+        const gpxData = this.generateMockGPX(this.currentRoute);
+        const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `stride-route-${Date.now()}.gpx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.showToast('Route downloaded as GPX!', 'success');
+    }
+
+    generateMockGPX(route) {
+        const timestamp = new Date().toISOString();
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Stride Walking App">
+    <metadata>
+        <name>Stride Walking Route</name>
+        <desc>Generated walking route - ${route.distance}, ${route.duration}</desc>
+        <time>${timestamp}</time>
+    </metadata>
+    <trk>
+        <name>Walking Route</name>
+        <trkseg>
+            <trkpt lat="40.7128" lon="-74.0060">
+                <ele>10</ele>
+                <time>${timestamp}</time>
+            </trkpt>
+            <trkpt lat="40.7138" lon="-74.0070">
+                <ele>12</ele>
+                <time>${timestamp}</time>
+            </trkpt>
+            <trkpt lat="40.7148" lon="-74.0080">
+                <ele>15</ele>
+                <time>${timestamp}</time>
+            </trkpt>
+        </trkseg>
+    </trk>
+</gpx>`;
+    }
 }
 
 // Initialize the app when DOM is loaded
@@ -814,4 +994,29 @@ if ('serviceWorker' in navigator) {
         // Could register a service worker here for offline support
         console.log('Stride Web Demo loaded successfully');
     });
+}
+
+// Global functions for HTML onclick handlers
+function showMap(routeType) {
+    window.strideApp?.showRouteModal(routeType);
+}
+
+function closeMapModal() {
+    window.strideApp?.closeMapModal();
+}
+
+function startNavigation() {
+    window.strideApp?.startNavigation();
+}
+
+function shareRoute() {
+    window.strideApp?.shareRoute();
+}
+
+function downloadRoute() {
+    window.strideApp?.downloadRoute();
+}
+
+function shareWalk() {
+    window.strideApp?.shareRoute();
 }
