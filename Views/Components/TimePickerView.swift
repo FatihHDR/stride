@@ -14,73 +14,80 @@ struct TimePickerView: View {
     }
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 20) {
             HStack {
-                Image(systemName: "clock")
-                    .foregroundColor(.blue)
-                Text("Walk Duration")
-                    .font(.headline)
+                Text("Duration")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
                 Spacer()
                 Text("\(Int(selectedDuration)) min")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.blue)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.blue.opacity(0.1))
+                    )
             }
             
-            Slider(value: $selectedDuration, in: range, step: step) {
-                Text("Duration")
-            } minimumValueLabel: {
-                Text("\(Int(range.lowerBound))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } maximumValueLabel: {
-                Text("\(Int(range.upperBound))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .accentColor(.blue)
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Estimated Distance")
+            VStack(spacing: 12) {
+                Slider(value: $selectedDuration, in: range, step: step)
+                    .accentColor(.blue)
+                    .padding(.horizontal, 4)
+                
+                HStack {
+                    Text("\(Int(range.lowerBound)) min")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("\(String(format: "%.1f", estimatedDistance)) km")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                    Spacer()
+                    Text("\(Int(range.upperBound)) min")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Estimated Steps")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("\(Int(estimatedSteps))")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                .padding(.horizontal, 4)
+            }
+            
+            // Duration suggestions
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
+                ForEach(durationSuggestions, id: \.self) { suggestion in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedDuration = suggestion
+                        }
+                    } label: {
+                        Text("\(Int(suggestion))m")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(selectedDuration == suggestion ? .white : .blue)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(selectedDuration == suggestion ? Color.blue : Color.blue.opacity(0.1))
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
         }
-        .padding()
+        .padding(.horizontal, 24)
+        .padding(.vertical, 20)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGray6).opacity(0.3))
         )
     }
     
-    private var estimatedDistance: Double {
-        let distanceInMeters = selectedDuration * 60 * Constants.averageWalkingSpeed
-        return distanceInMeters / 1000 // Convert to kilometers
-    }
-    
-    private var estimatedSteps: Double {
-        let distanceInMeters = selectedDuration * 60 * Constants.averageWalkingSpeed
-        return distanceInMeters * 1.3 // Approximate steps per meter
+    private var durationSuggestions: [Double] {
+        [15, 30, 45, 60]
     }
 }
 
 #Preview {
-    TimePickerView(duration: .constant(15))
-        .padding()
+    VStack {
+        TimePickerView(duration: .constant(30))
+        Spacer()
+    }
+    .padding()
+    .background(Color(.systemGroupedBackground))
 }

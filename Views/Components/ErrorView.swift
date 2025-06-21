@@ -10,38 +10,66 @@ struct ErrorView: View {
     }
     
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.largeTitle)
-                .foregroundColor(.orange)
+        VStack(spacing: 20) {
+            Circle()
+                .fill(Color.red.opacity(0.1))
+                .frame(width: 80, height: 80)
+                .overlay(
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(.red)
+                )
             
-            Text("Oops!")
-                .font(.headline)
-                .fontWeight(.semibold)
-            
-            Text(message)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            VStack(spacing: 8) {
+                Text("Something went wrong")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text(message)
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             
             if let retryAction = retryAction {
-                Button("Try Again") {
+                Button {
                     retryAction()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Try Again")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.blue)
+                    )
+                    .foregroundColor(.white)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PlainButtonStyle())
             }
         }
-        .padding()
+        .padding(.horizontal, 40)
+        .padding(.vertical, 32)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
         )
     }
 }
 
 #Preview {
-    ErrorView("Unable to generate walking route. Please check your location settings and try again.") {
-        print("Retry tapped")
+    VStack(spacing: 20) {
+        ErrorView("Unable to generate route. Please check your internet connection.") {
+            print("Retry tapped")
+        }
+        
+        ErrorView("Location services are disabled.")
     }
+    .padding()
+    .background(Color(.systemGroupedBackground))
 }

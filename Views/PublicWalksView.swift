@@ -10,100 +10,210 @@ struct PublicWalksView: View {
     @State private var showingWalkDetail = false
     
     var body: some View {
-        NavigationView {
+        GeometryReader { geometry in
             VStack(spacing: 0) {
-                // Search and Load Section
-                VStack(spacing: 16) {
-                    // Search bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.secondary)
-                        
-                        TextField("Search public walks...", text: $searchText)
-                            .textFieldStyle(PlainTextFieldStyle())
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    
-                    // Load from share code
-                    Button("Load Walk from Share Code") {
-                        showingShareCodeAlert = true
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .padding()
-                .background(Color(.systemGray6))
+                // Modern Header
+                headerSection
                 
-                // Public Walks List
+                // Search and Actions
+                searchSection
+                
+                // Content
                 if sharingService.isLoading {
-                    Spacer()
-                    ProgressView("Loading public walks...")
-                    Spacer()
+                    LoadingSection()
                 } else if filteredWalks.isEmpty {
-                    VStack(spacing: 16) {
-                        Spacer()
-                        
-                        Image(systemName: "figure.walk.circle")
-                            .font(.system(size: 64))
-                            .foregroundColor(.secondary)
-                        
-                        Text("No Public Walks Found")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        
-                        Text("Be the first to share a walk with the community!")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        
-                        Spacer()
-                    }
-                    .padding()
+                    EmptyStateSection()
                 } else {
-                    List(filteredWalks, id: \.id) { sharedWalk in
-                        PublicWalkRowView(sharedWalk: sharedWalk) {
-                            selectedWalk = sharedWalk
-                            showingWalkDetail = true
-                        }
-                    }
-                    .listStyle(PlainListStyle())
+                    WalksList()
                 }
             }
-            .navigationTitle("Public Walks")
-            .navigationBarTitleDisplayMode(.large)
-            .refreshable {
+        }
+        .navigationTitle("")
+        .navigationBarHidden(true)
+        .background(Color(.systemGroupedBackground))
+        .refreshable {
+            await sharingService.loadPublicWalks()
+        }
+        .onAppear {
+            Task {
                 await sharingService.loadPublicWalks()
             }
-            .onAppear {
-                Task {
-                    await sharingService.loadPublicWalks()
-                }
+        }
+        .alert("Enter Share Code", isPresented: $showingShareCodeAlert) {
+            TextField("Share code", text: $shareCodeInput)
+                .textInputAutocapitalization(.characters)
+            
+            Button("Load") {
+                loadWalkFromShareCode()
             }
-            .alert("Enter Share Code", isPresented: $showingShareCodeAlert) {
-                TextField("Share code", text: $shareCodeInput)
-                    .textInputAutocapitalization(.characters)
-                
-                Button("Load") {
-                    loadWalkFromShareCode()
-                }
-                .disabled(shareCodeInput.isEmpty)
-                
-                Button("Cancel", role: .cancel) {
-                    shareCodeInput = ""
-                }
-            } message: {
-                Text("Enter the 8-character share code to load a walk")
+            .disabled(shareCodeInput.isEmpty)
+            
+            Button("Cancel", role: .cancel) {
+                shareCodeInput = ""
             }
-            .sheet(isPresented: $showingWalkDetail) {
-                if let walk = selectedWalk {
-                    PublicWalkDetailView(sharedWalk: walk)
-                }
+        } message: {
+            Text("Enter the 8-character share code to load a walk")
+        }
+        .sheet(isPresented: $showingWalkDetail) {
+            if let walk = selectedWalk {
+                PublicWalkDetailView(sharedWalk: walk, multiLocationViewModel: multiLocationViewModel)
             }
         }
     }
     
+    // MARK: - Header Section
+    private var headerSection: some View {
+        VStack(spacing: 16) {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: [.purple.opacity(0.1), .purple.opacity(0.05)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 80, height: 80)
+                .overlay(
+                    Image(systemName: "globe.americas.fill")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundColor(.purple)
+                )
+            
+            VStack(spacing: 8) {
+                Text("Explore Walks")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                
+                Text("Discover amazing walks from the community")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.top, 20)
+        .padding(.horizontal, 20)
+    }
+    
+    // MARK: - Search Section
+    private var searchSection: some View {
+        VStack(spacing: 16) {
+            // Search Bar
+            HStack(spacing: 12) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 16))
+                
+                TextField("Search walks, places, creators...", text: $searchText)
+                    .textFieldStyle(PlainTextFieldStyle())
+                
+                if !searchText.isEmpty {
+                    Button("Clear") {
+                        searchText = ""
+                    }
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+            )
+            
+            // Share Code Button
+            Button {
+                showingShareCodeAlert = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 16))
+                    Text("Load from Share Code")
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.purple.opacity(0.1))
+                )
+                .foregroundColor(.purple)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+    }
+    
+    // MARK: - Content Sections
+    @ViewBuilder
+    private func LoadingSection() -> some View {
+        VStack(spacing: 16) {
+            Spacer()
+            ProgressView()
+                .scaleEffect(1.2)
+            Text("Discovering amazing walks...")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+    }
+    
+    @ViewBuilder
+    private func EmptyStateSection() -> some View {
+        VStack(spacing: 20) {
+            Spacer()
+            
+            Circle()
+                .fill(Color(.systemGray6))
+                .frame(width: 80, height: 80)
+                .overlay(
+                    Image(systemName: "figure.walk.motion")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary)
+                )
+            
+            VStack(spacing: 8) {
+                Text("No Walks Found")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.primary)
+                
+                Text(searchText.isEmpty ? "Check back later for new walks" : "Try a different search term")
+                    .font(.system(size: 16))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            Button("Refresh") {
+                Task {
+                    await sharingService.loadPublicWalks()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 40)
+    }
+    
+    @ViewBuilder
+    private func WalksList() -> some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                ForEach(filteredWalks, id: \.id) { walk in
+                    ModernWalkCard(walk: walk) {
+                        selectedWalk = walk
+                        showingWalkDetail = true
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+        }
+    }
+    
+    // MARK: - Computed Properties
     private var filteredWalks: [SharedWalk] {
         if searchText.isEmpty {
             return sharingService.publicWalks
@@ -118,6 +228,7 @@ struct PublicWalksView: View {
         }
     }
     
+    // MARK: - Helper Methods
     private func loadWalkFromShareCode() {
         guard !shareCodeInput.isEmpty else { return }
         
@@ -145,254 +256,237 @@ struct PublicWalksView: View {
     }
 }
 
-struct PublicWalkRowView: View {
-    let sharedWalk: SharedWalk
+// MARK: - Supporting Views
+
+struct ModernWalkCard: View {
+    let walk: SharedWalk
     let onTap: () -> Void
     
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
+                // Header
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(sharedWalk.walk.name)
-                            .font(.headline)
-                            .fontWeight(.semibold)
+                        Text(walk.walk.name)
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.primary)
+                            .lineLimit(2)
                         
-                        Text("by \(sharedWalk.walk.createdBy)")
-                            .font(.subheadline)
+                        Text("by \(walk.walk.createdBy)")
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     
                     Spacer()
                     
                     VStack(alignment: .trailing, spacing: 4) {
-                        HStack {
+                        HStack(spacing: 4) {
                             Image(systemName: "star.fill")
                                 .foregroundColor(.yellow)
-                                .font(.caption)
-                            Text(String(format: "%.1f", sharedWalk.rating))
-                                .font(.caption)
-                                .fontWeight(.medium)
+                                .font(.system(size: 12))
+                            Text(String(format: "%.1f", walk.rating))
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
                         }
                         
-                        Text("\(sharedWalk.downloadCount) downloads")
-                            .font(.caption)
+                        Text("\(walk.downloadCount) downloads")
+                            .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
                 }
                 
-                HStack {
-                    Label(sharedWalk.walk.totalDistance.formatAsDistance(), systemImage: "ruler")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                // Stats
+                HStack(spacing: 16) {
+                    StatBadge(
+                        icon: "ruler",
+                        value: walk.walk.totalDistance.formatAsDistance(),
+                        color: .blue
+                    )
                     
-                    Label(sharedWalk.walk.estimatedDuration.formatAsDuration(), systemImage: "clock")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    StatBadge(
+                        icon: "clock",
+                        value: walk.walk.estimatedDuration.formatAsDuration(),
+                        color: .orange
+                    )
                     
-                    Label("\(sharedWalk.walk.locations.count) stops", systemImage: "location")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    StatBadge(
+                        icon: "location",
+                        value: "\(walk.walk.locations.count) stops",
+                        color: .green
+                    )
                     
                     Spacer()
                     
-                    Text(sharedWalk.shareCode)
-                        .font(.caption)
-                        .fontFamily(.monospaced)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color(.systemGray5))
-                        .cornerRadius(4)
+                    // Share Code
+                    Text(walk.shareCode)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color(.systemGray6))
+                        )
                 }
                 
-                if !sharedWalk.walk.locations.isEmpty {
+                // Locations Preview
+                if !walk.walk.locations.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(Array(sharedWalk.walk.locations.prefix(5).enumerated()), id: \.element.id) { index, location in
+                            ForEach(Array(walk.walk.locations.prefix(4).enumerated()), id: \.element.id) { index, location in
                                 Text(location.name)
-                                    .font(.caption)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.blue)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.1))
-                                    .foregroundColor(.blue)
-                                    .cornerRadius(6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color.blue.opacity(0.1))
+                                    )
                             }
                             
-                            if sharedWalk.walk.locations.count > 5 {
-                                Text("+\(sharedWalk.walk.locations.count - 5) more")
-                                    .font(.caption)
+                            if walk.walk.locations.count > 4 {
+                                Text("+\(walk.walk.locations.count - 4) more")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(Color(.systemGray5))
-                                    .foregroundColor(.secondary)
-                                    .cornerRadius(6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color(.systemGray6))
+                                    )
                             }
                         }
                     }
                 }
             }
-            .padding()
+            .padding(20)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
             )
         }
         .buttonStyle(PlainButtonStyle())
-        .padding(.horizontal)
-        .padding(.vertical, 4)
+    }
+}
+
+struct StatBadge: View {
+    let icon: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(color.opacity(0.1))
+        )
     }
 }
 
 struct PublicWalkDetailView: View {
     let sharedWalk: SharedWalk
+    let multiLocationViewModel: MultiLocationWalkViewModel
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var multiLocationViewModel: MultiLocationWalkViewModel
     @State private var showingImportAlert = false
     
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Walk Header
-                    VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 16) {
                         Text(sharedWalk.walk.name)
-                            .font(.title)
-                            .fontWeight(.bold)
+                            .font(.system(size: 24, weight: .bold))
+                            .multilineTextAlignment(.center)
                         
-                        Text("Created by \(sharedWalk.walk.createdBy)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        Text("Shared on \(sharedWalk.sharedAt.formatted(date: .abbreviated, time: .omitted))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Walk Stats
-                    HStack(spacing: 20) {
-                        VStack {
-                            Text(sharedWalk.walk.totalDistance.formatAsDistance())
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.blue)
-                            Text("Distance")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        HStack(spacing: 16) {
+                            StatBadge(icon: "ruler", value: sharedWalk.walk.totalDistance.formatAsDistance(), color: .blue)
+                            StatBadge(icon: "clock", value: sharedWalk.walk.estimatedDuration.formatAsDuration(), color: .orange)
+                            StatBadge(icon: "location", value: "\(sharedWalk.walk.locations.count) stops", color: .green)
                         }
                         
-                        VStack {
-                            Text(sharedWalk.walk.estimatedDuration.formatAsDuration())
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.green)
-                            Text("Duration")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        VStack {
-                            Text("\(sharedWalk.walk.locations.count)")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.orange)
-                            Text("Locations")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    
-                    // Rating and Downloads
-                    HStack {
-                        HStack {
+                        HStack(spacing: 4) {
                             Image(systemName: "star.fill")
                                 .foregroundColor(.yellow)
                             Text(String(format: "%.1f", sharedWalk.rating))
-                                .fontWeight(.medium)
-                            Text("(\(sharedWalk.reviews.count) reviews)")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("(\(sharedWalk.downloadCount) downloads)")
+                                .font(.system(size: 14))
                                 .foregroundColor(.secondary)
                         }
-                        
-                        Spacer()
-                        
-                        Text("\(sharedWalk.downloadCount) downloads")
-                            .foregroundColor(.secondary)
                     }
                     
                     // Locations
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Locations")
-                            .font(.headline)
-                            .fontWeight(.semibold)
+                        Text("Route Locations")
+                            .font(.system(size: 18, weight: .semibold))
                         
                         ForEach(Array(sharedWalk.walk.locations.enumerated()), id: \.element.id) { index, location in
-                            HStack {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.blue.opacity(0.2))
-                                        .frame(width: 24, height: 24)
-                                    
-                                    Text("\(index + 1)")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.blue)
-                                }
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(index == 0 ? .green : index == sharedWalk.walk.locations.count - 1 ? .red : .blue)
+                                    .frame(width: 24, height: 24)
+                                    .overlay(
+                                        Text("\(index + 1)")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(.white)
+                                    )
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(location.name)
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
+                                        .font(.system(size: 15, weight: .medium))
                                     
                                     if let address = location.address {
                                         Text(address)
-                                            .font(.caption)
+                                            .font(.system(size: 13))
                                             .foregroundColor(.secondary)
                                     }
                                 }
                                 
                                 Spacer()
                             }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(.systemGray6).opacity(0.5))
+                            )
                         }
                     }
                     
-                    // Action Buttons
-                    VStack(spacing: 12) {
-                        NavigationLink(destination: MultiLocationMapView(walk: sharedWalk.walk)) {
-                            HStack {
-                                Image(systemName: "map")
-                                Text("View on Map")
-                                    .fontWeight(.medium)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
+                    // Import Button
+                    Button {
+                        showingImportAlert = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.down")
+                            Text("Import This Walk")
+                                .font(.system(size: 16, weight: .semibold))
                         }
-                        
-                        Button {
-                            showingImportAlert = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.and.arrow.down")
-                                Text("Import Walk")
-                                    .fontWeight(.medium)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.blue)
+                        )
+                        .foregroundColor(.white)
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding()
+                .padding(20)
             }
             .navigationTitle("Walk Details")
             .navigationBarTitleDisplayMode(.inline)
