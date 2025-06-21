@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stride - Walking Route Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <div class="tab-item active" data-tab="walk">
+                <i class="fas fa-walking"></i>
+                <span>Walk</span>
+            </div>
+            <div class="tab-item" data-tab="routes">
+                <i class="fas fa-map"></i>
+                <span>Routes</span>
+            </div>
+            <div class="tab-item" data-tab="explore">
+                <i class="fas fa-globe-americas"></i>
+                <span>Explore</span>
+            </div>
+        </nav>
+
+        <!-- Random Walk Tab -->
+        <div class="tab-content active" id="walk-tab">
+            <div class="container">
+                <!-- Header -->
+                <div class="header-section">
+                    <div class="icon-circle blue">
+                        <i class="fas fa-walking"></i>
+                    </div>
+                    <h1>Random Walk</h1>
+                    <p>Discover new paths around you</p>
+                </div>
+
+                <!-- Duration Picker -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>Duration</span>
+                        <span class="duration-badge" id="durationDisplay">15 min</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="durationSlider" min="5" max="120" value="15" step="5" class="slider">
+                        <div class="slider-labels">
+                            <span>5 min</span>
+                            <span>120 min</span>
+                        </div>
+                    </div>
+                    <div class="duration-suggestions">
+                        <button class="suggestion-btn" data-duration="15">15m</button>
+                        <button class="suggestion-btn" data-duration="30">30m</button>
+                        <button class="suggestion-btn" data-duration="45">45m</button>
+                        <button class="suggestion-btn" data-duration="60">60m</button>
+                    </div>
+                </div>
+
+                <!-- Generate Button -->
+                <button class="generate-btn" id="generateWalkBtn" disabled>
+                    <i class="fas fa-arrow-right" id="generateIcon"></i>
+                    <div class="spinner" id="generateSpinner" style="display: none;"></div>
+                    <span id="generateText">Start Walking</span>
+                </button>
+
+                <!-- Location Status -->
+                <div class="status-card" id="locationStatus">
+                    <div class="status-dot orange"></div>
+                    <div class="status-info">
+                        <div class="status-title">Getting Location...</div>
+                        <div class="status-subtitle" id="locationAccuracy"></div>
+                    </div>
+                    <div class="spinner small" id="locationSpinner"></div>
+                </div>
+
+                <!-- Route Result -->
+                <div class="result-card" id="walkResult" style="display: none;">
+                    <div class="result-header">
+                        <div class="success-icon">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="result-info">
+                            <div class="result-title">Route Generated</div>
+                            <div class="result-subtitle">Ready to start your walk</div>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <i class="fas fa-ruler"></i>
+                            <div class="stat-value" id="walkDistance">0m</div>
+                            <div class="stat-label">Distance</div>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-clock"></i>
+                            <div class="stat-value" id="walkDuration">0 min</div>
+                            <div class="stat-label">Duration</div>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div class="stat-value" id="walkWaypoints">0</div>
+                            <div class="stat-label">Waypoints</div>
+                        </div>
+                    </div>
+                    <button class="view-map-btn" onclick="showMap('random')">
+                        <i class="fas fa-map"></i>
+                        <span>View Route</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi-Location Routes Tab -->
+        <div class="tab-content" id="routes-tab">
+            <div class="container">
+                <!-- Header -->
+                <div class="header-section">
+                    <div class="icon-circle green">
+                        <i class="fas fa-map"></i>
+                    </div>
+                    <h1>Multi-Location Walk</h1>
+                    <p>Plan a route visiting multiple places</p>
+                </div>
+
+                <!-- Walk Details -->
+                <div class="card">
+                    <h3>Walk Details</h3>
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="walkName" placeholder="Enter walk name" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Creator</label>
+                        <input type="text" id="creatorName" placeholder="Your name" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="makePublic">
+                            <span class="toggle-slider"></span>
+                            Make Public
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Add Locations -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>Add Locations</span>
+                        <button class="add-current-btn" id="addCurrentLocation">
+                            <i class="fas fa-crosshairs"></i>
+                            Current Location
+                        </button>
+                    </div>
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="locationSearch" placeholder="Search for places, addresses..." class="search-input">
+                        <button class="clear-search" id="clearSearch" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="search-results" id="searchResults"></div>
+                </div>
+
+                <!-- Locations List -->
+                <div class="card" id="locationsCard" style="display: none;">
+                    <div class="card-header">
+                        <span>Route (<span id="locationCount">0</span> stops)</span>
+                        <span class="distance-badge" id="totalDistance">≈ 0 km</span>
+                    </div>
+                    <div class="locations-list" id="locationsList"></div>
+                </div>
+
+                <!-- Route Options -->
+                <div class="card">
+                    <h3>Route Options</h3>
+                    <div class="form-group">
+                        <label>Route Type</label>
+                        <div class="segment-control">
+                            <input type="radio" id="direct" name="routeType" value="direct" checked>
+                            <label for="direct">Direct</label>
+                            <input type="radio" id="loop" name="routeType" value="loop">
+                            <label for="loop">Loop</label>
+                            <input type="radio" id="exploring" name="routeType" value="exploring">
+                            <label for="exploring">Exploring</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="optimizeOrder">
+                            <span class="toggle-slider"></span>
+                            Optimize Route Order
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Generate Multi-Location Button -->
+                <button class="generate-btn green" id="generateMultiBtn" disabled>
+                    <i class="fas fa-route" id="generateMultiIcon"></i>
+                    <div class="spinner" id="generateMultiSpinner" style="display: none;"></div>
+                    <span id="generateMultiText">Generate Multi-Location Walk</span>
+                </button>
+
+                <!-- Multi-Location Result -->
+                <div class="result-card" id="multiResult" style="display: none;">
+                    <div class="result-header">
+                        <div class="success-icon">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="result-info">
+                            <div class="result-title">Multi-Location Walk Ready!</div>
+                            <div class="result-subtitle" id="multiLocationCount">0 locations connected</div>
+                        </div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <i class="fas fa-ruler"></i>
+                            <div class="stat-value" id="multiDistance">0 km</div>
+                            <div class="stat-label">Distance</div>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-clock"></i>
+                            <div class="stat-value" id="multiDuration">0 min</div>
+                            <div class="stat-label">Duration</div>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-route"></i>
+                            <div class="stat-value" id="multiRoutes">0</div>
+                            <div class="stat-label">Routes</div>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="view-map-btn" onclick="showMap('multi')">
+                            <i class="fas fa-map"></i>
+                            <span>View Map</span>
+                        </button>
+                        <button class="share-btn" onclick="shareWalk()">
+                            <i class="fas fa-share"></i>
+                            <span>Share</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Explore Tab -->
+        <div class="tab-content" id="explore-tab">
+            <div class="container">
+                <!-- Header -->
+                <div class="header-section">
+                    <div class="icon-circle purple">
+                        <i class="fas fa-globe-americas"></i>
+                    </div>
+                    <h1>Explore Walks</h1>
+                    <p>Discover amazing walks from the community</p>
+                </div>
+
+                <!-- Search Section -->
+                <div class="card">
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="exploreSearch" placeholder="Search walks, places, creators..." class="search-input">
+                        <button class="clear-search" id="clearExploreSearch" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <button class="share-code-btn" onclick="showShareCodeInput()">
+                        <i class="fas fa-code"></i>
+                        <span>Load from Share Code</span>
+                    </button>
+                </div>
+
+                <!-- Loading State -->
+                <div class="loading-section" id="exploreLoading">
+                    <div class="loading-animation">
+                        <div class="spinner large"></div>
+                    </div>
+                    <p>Discovering amazing walks...</p>
+                </div>
+
+                <!-- Public Walks List -->
+                <div class="walks-list" id="walksList">
+                    <!-- Walks will be populated by JavaScript -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    <div class="empty-icon">
+                        <i class="fas fa-walking"></i>
+                    </div>
+                    <h3>No Walks Found</h3>
+                    <p>Check back later for new walks</p>
+                    <button class="refresh-btn" onclick="loadPublicWalks()">Refresh</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Modal -->
+        <div class="modal" id="mapModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Your Route</h3>
+                    <button class="close-btn" onclick="closeMap()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="map-container">
+                    <div id="map" class="map"></div>
+                    <div class="map-controls">
+                        <button class="map-control-btn" onclick="recenterMap()">
+                            <i class="fas fa-location-arrow"></i>
+                        </button>
+                        <button class="map-control-btn" onclick="toggleMapInfo()">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="map-info" id="mapInfo">
+                    <div class="info-stats">
+                        <div class="info-stat">
+                            <i class="fas fa-clock"></i>
+                            <span id="mapDuration">0 min</span>
+                        </div>
+                        <div class="info-stat">
+                            <i class="fas fa-ruler"></i>
+                            <span id="mapDistance">0 km</span>
+                        </div>
+                        <div class="info-stat">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="mapWaypoints">0 points</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Share Code Modal -->
+        <div class="modal" id="shareCodeModal">
+            <div class="modal-content small">
+                <div class="modal-header">
+                    <h3>Enter Share Code</h3>
+                    <button class="close-btn" onclick="closeShareCodeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Enter the 8-character share code to load a walk</p>
+                    <input type="text" id="shareCodeInput" placeholder="Share code" maxlength="8" class="form-input">
+                    <div class="modal-actions">
+                        <button class="cancel-btn" onclick="closeShareCodeModal()">Cancel</button>
+                        <button class="load-btn" onclick="loadFromShareCode()">Load</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast" id="toast">
+            <div class="toast-content">
+                <i class="toast-icon fas fa-check-circle"></i>
+                <span class="toast-message">Success!</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.css">
+</body>
+</html>
